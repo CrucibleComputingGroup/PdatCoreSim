@@ -1,0 +1,33 @@
+# VCS Simulation Artifacts
+simv*
+csrc/
+*.daidir/
+*.vpd
+ucli.key
+*.log
+*.fsdb
+*.vcd
+DVEfiles/
+*.shm/
+*.trn
+*.dsn
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Output directories
+output/
+*.wlf
+work/
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store

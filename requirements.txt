@@ -1,0 +1,7 @@
+# CoreSim Dependencies
+# RISC-V processor simulation framework
+
+# PDAT DSL - Install from local package in development mode
+# Production: pdat-dsl>=0.1.0
+# Development: pip install -e ../PdatDsl
+-e ../PdatDsl
