@@ -134,7 +134,6 @@ DSL_FILE=$(realpath "$DSL_FILE")
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
-cd "$OUTPUT_DIR"
 
 CONSTRAINTS_FILE="${OUTPUT_DIR}/instr_random_constraints.sv"
 
@@ -196,8 +195,8 @@ echo ""
 echo "[3/$TOTAL_STEPS] Running randomized simulation..."
 echo ""
 
-# Run VCS simulation
-./simv_ibex_random \
+# Run VCS simulation (executable is in PROJECT_ROOT after compilation)
+"${PROJECT_ROOT}/simv_ibex_random" \
     +FLUSH_CYCLES=$FLUSH_CYCLES \
     +RANDOM_CYCLES=$RANDOM_CYCLES
 
