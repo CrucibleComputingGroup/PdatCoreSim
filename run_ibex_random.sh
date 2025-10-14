@@ -218,12 +218,13 @@ echo "[3.5/$TOTAL_STEPS] Splitting VCD into initial state and random execution t
 # Clock period is 10ns = 10000ps, split at cycle FLUSH_CYCLES
 SPLIT_TIME_PS=$((FLUSH_CYCLES * 10000))
 
+# VCD files are created in current directory by VCS, move them to output
 if [ -f "ibex_combined.vcd" ]; then
     python3 "${PROJECT_ROOT}/scripts/ibex/split_vcd.py" \
         ibex_combined.vcd \
         $SPLIT_TIME_PS \
-        ibex_reset_state.vcd \
-        ibex_random_sim.vcd
+        "${OUTPUT_DIR}/ibex_reset_state.vcd" \
+        "${OUTPUT_DIR}/ibex_random_sim.vcd"
 
     if [ $? -eq 0 ]; then
         # Remove combined VCD after successful split
@@ -232,8 +233,13 @@ if [ -f "ibex_combined.vcd" ]; then
     else
         echo "  → Warning: VCD split failed, keeping combined VCD"
     fi
+elif [ -f "ibex_reset_state.vcd" ] && [ -f "ibex_random_sim.vcd" ]; then
+    # Already split, just move them
+    mv ibex_reset_state.vcd "${OUTPUT_DIR}/"
+    mv ibex_random_sim.vcd "${OUTPUT_DIR}/"
+    echo "  → VCDs already split, moved to output directory"
 else
-    echo "  → Warning: Combined VCD not found"
+    echo "  → Warning: VCD files not found"
 fi
 
 echo ""
