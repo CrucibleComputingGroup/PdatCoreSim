@@ -1,3 +1,9 @@
 [submodule "cores/ibex"]
 	path = cores/ibex
 	url = https://github.com/lowrisc/ibex.git
+[submodule "cores/cva6"]
+	path = cores/cva6
+	url = https://github.com/openhwgroup/cva6
+[submodule "cores/serv"]
+	path = cores/serv
+	url = https://github.com/olofk/serv
