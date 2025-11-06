@@ -1,0 +1,40 @@
+// Register File for RV32E (16 registers)
+// Dual-read port, single-write port synchronous register file
+module regfile (
+    clk: input clock,
+    rst: input reset,
+
+    // Read ports
+    rs1_addr: input logic<4>,
+    rs2_addr: input logic<4>,
+    rs1_data: output logic<32>,
+    rs2_data: output logic<32>,
+
+    // Write port
+    rd_addr: input logic<4>,
+    rd_data: input logic<32>,
+    we: input logic
+) {
+    // 16 registers for RV32E (x0-x15)
+    var regs: logic<32> [16];
+
+    // x0 is hardwired to zero
+    assign rs1_data = if rs1_addr == 0 ? 32'h0 : regs[rs1_addr];
+    assign rs2_data = if rs2_addr == 0 ? 32'h0 : regs[rs2_addr];
+
+    // Synchronous write
+    always_ff (clk, rst) {
+        if_reset {
+            for i: u32 in 0..16 {
+                regs[i] = 0;
+            }
+        } else {
+            // Write to register if enabled and not x0
+            if we && rd_addr != 0 {
+                regs[rd_addr] = rd_data;
+            }
+            // Always force x0 to zero
+            regs[0] = 0;
+        }
+    }
+}

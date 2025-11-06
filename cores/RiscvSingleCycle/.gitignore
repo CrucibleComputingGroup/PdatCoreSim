@@ -1,0 +1,6 @@
+.build/
+.claude/
+Claude.md
+formal/jgproject
+formal/*.vcd
+dependencies

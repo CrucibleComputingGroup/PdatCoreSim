@@ -1,0 +1,77 @@
+// Top-level single-cycle RISC-V core (RV32E)
+// Harvard architecture with separate instruction and data memory interfaces
+module riscv_core (
+    clk: input clock,
+    rst: input reset,
+
+    // Instruction memory interface (read-only)
+    imem_addr: output logic<32>,
+    imem_rdata: input logic<32>,
+
+    // Data memory interface (read/write)
+    dmem_addr: output logic<32>,
+    dmem_wdata: output logic<32>,
+    dmem_rdata: input logic<32>,
+    dmem_we: output logic,
+    dmem_re: output logic
+) {
+    // Control signals
+    var branch: logic;
+    var jump: logic;
+    var mem_read: logic;
+    var mem_write: logic;
+    var mem_to_reg: logic;
+    var alu_src: logic;
+    var alu_a_src: logic<2>;
+    var reg_write: logic;
+    var alu_op: logic<4>;
+    var imm_sel: logic<3>;
+    var funct3: logic<3>;
+    var pc_src: logic<2>;
+
+    // Instruction from memory
+    var instruction: logic<32>;
+    assign instruction = imem_rdata;
+
+    // Control unit instantiation
+    inst control_inst: control (
+        instruction: instruction,
+        branch: branch,
+        jump: jump,
+        mem_read: mem_read,
+        mem_write: mem_write,
+        mem_to_reg: mem_to_reg,
+        alu_src: alu_src,
+        alu_a_src: alu_a_src,
+        reg_write: reg_write,
+        alu_op: alu_op,
+        imm_sel: imm_sel,
+        funct3: funct3,
+        pc_src: pc_src
+    );
+
+    // Datapath instantiation
+    inst datapath_inst: datapath (
+        clk: clk,
+        rst: rst,
+        imem_addr: imem_addr,
+        imem_rdata: imem_rdata,
+        dmem_addr: dmem_addr,
+        dmem_wdata: dmem_wdata,
+        dmem_rdata: dmem_rdata,
+        branch: branch,
+        jump: jump,
+        mem_to_reg: mem_to_reg,
+        alu_src: alu_src,
+        alu_a_src: alu_a_src,
+        reg_write: reg_write,
+        alu_op: alu_op,
+        imm_sel: imm_sel,
+        funct3: funct3,
+        pc_src: pc_src
+    );
+
+    // Memory control signals
+    assign dmem_we = mem_write;
+    assign dmem_re = mem_read;
+}

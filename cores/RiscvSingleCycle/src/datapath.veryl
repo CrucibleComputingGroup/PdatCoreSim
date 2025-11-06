@@ -1,0 +1,174 @@
+// Datapath for single-cycle RISC-V processor
+module datapath (
+    clk: input clock,
+    rst: input reset,
+
+    // Instruction memory interface
+    imem_addr: output logic<32>,
+    imem_rdata: input logic<32>,
+
+    // Data memory interface
+    dmem_addr: output logic<32>,
+    dmem_wdata: output logic<32>,
+    dmem_rdata: input logic<32>,
+
+    // Control signals from control unit
+    branch: input logic,
+    jump: input logic,
+    mem_to_reg: input logic,
+    alu_src: input logic,
+    alu_a_src: input logic<2>,
+    reg_write: input logic,
+    alu_op: input logic<4>,
+    imm_sel: input logic<3>,
+    funct3: input logic<3>,
+    pc_src: input logic<2>
+) {
+    // PC source selection
+    const PC_PLUS4: logic<2> = 2'b00;
+    const PC_BRANCH: logic<2> = 2'b01;
+    const PC_JALR: logic<2> = 2'b10;
+
+    // ALU A source selection
+    const ALU_A_RS1: logic<2> = 2'b00;
+    const ALU_A_PC: logic<2> = 2'b01;
+    const ALU_A_ZERO: logic<2> = 2'b10;
+
+    // Program Counter
+    var pc: logic<32>;
+    var pc_next: logic<32>;
+    var pc_plus4: logic<32>;
+    var pc_target: logic<32>;
+
+    // Instruction fields
+    var instruction: logic<32>;
+    var rs1_addr: logic<4>;
+    var rs2_addr: logic<4>;
+    var rd_addr: logic<4>;
+
+    // Register file signals
+    var rs1_data: logic<32>;
+    var rs2_data: logic<32>;
+    var rd_data: logic<32>;
+
+    // Immediate
+    var imm: logic<32>;
+
+    // ALU signals
+    var alu_a: logic<32>;
+    var alu_b: logic<32>;
+    var alu_result: logic<32>;
+    var alu_zero: logic;
+
+    // Branch signals
+    var branch_taken: logic;
+    var take_branch: logic;
+
+    // Instruction from memory
+    assign instruction = imem_rdata;
+    assign imem_addr = pc;
+
+    // Extract instruction fields (RV32E uses 4-bit register addresses)
+    assign rs1_addr = instruction[18:15];
+    assign rs2_addr = instruction[23:20];
+    assign rd_addr = instruction[10:7];
+
+    // Register file instantiation
+    inst regfile_inst: regfile (
+        clk: clk,
+        rst: rst,
+        rs1_addr: rs1_addr,
+        rs2_addr: rs2_addr,
+        rs1_data: rs1_data,
+        rs2_data: rs2_data,
+        rd_addr: rd_addr,
+        rd_data: rd_data,
+        we: reg_write
+    );
+
+    // Immediate generator instantiation
+    inst immgen_inst: immgen (
+        instruction: instruction,
+        imm_sel: imm_sel,
+        imm: imm
+    );
+
+    // ALU input selection
+    always_comb {
+        case alu_a_src {
+            ALU_A_RS1: {
+                alu_a = rs1_data;
+            }
+            ALU_A_PC: {
+                alu_a = pc;
+            }
+            ALU_A_ZERO: {
+                alu_a = 32'h0;
+            }
+            default: {
+                alu_a = rs1_data;
+            }
+        }
+    }
+    assign alu_b = if alu_src ? imm : rs2_data;
+
+    // ALU instantiation
+    inst alu_inst: alu (
+        op: alu_op,
+        a: alu_a,
+        b: alu_b,
+        result: alu_result,
+        zero: alu_zero
+    );
+
+    // Branch comparator instantiation
+    inst branch_comp_inst: branch_comp (
+        a: rs1_data,
+        b: rs2_data,
+        funct3: funct3,
+        branch_taken: branch_taken
+    );
+
+    // Data memory interface
+    assign dmem_addr = alu_result;
+    assign dmem_wdata = rs2_data;
+
+    // Write-back data selection
+    assign rd_data = if jump ? pc_plus4 : if mem_to_reg ? dmem_rdata : alu_result;
+
+    // PC calculation
+    assign pc_plus4 = pc + 4;
+    assign pc_target = pc + imm;
+
+    // Branch decision
+    assign take_branch = branch & branch_taken;
+
+    // PC next value selection
+    always_comb {
+        case pc_src {
+            PC_PLUS4: {
+                pc_next = if take_branch ? pc_target : pc_plus4;
+            }
+            PC_BRANCH: {
+                // JAL
+                pc_next = pc_target;
+            }
+            PC_JALR: {
+                // JALR: (rs1 + imm) & ~1
+                pc_next = alu_result & 32'hFFFFFFFE;
+            }
+            default: {
+                pc_next = pc_plus4;
+            }
+        }
+    }
+
+    // PC register
+    always_ff (clk, rst) {
+        if_reset {
+            pc = 0;
+        } else {
+            pc = pc_next;
+        }
+    }
+}

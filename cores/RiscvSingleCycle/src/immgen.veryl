@@ -1,0 +1,43 @@
+// Immediate Generator for RISC-V instruction formats
+// Extracts and sign-extends immediates from instructions
+module immgen (
+    instruction: input logic<32>,
+    imm_sel: input logic<3>,
+    imm: output logic<32>
+) {
+    // Immediate format selection
+    const IMM_I: logic<3> = 3'b000; // I-type
+    const IMM_S: logic<3> = 3'b001; // S-type
+    const IMM_B: logic<3> = 3'b010; // B-type
+    const IMM_U: logic<3> = 3'b011; // U-type
+    const IMM_J: logic<3> = 3'b100; // J-type
+
+    var imm_i: logic<32>;
+    var imm_s: logic<32>;
+    var imm_b: logic<32>;
+    var imm_u: logic<32>;
+    var imm_j: logic<32>;
+
+    // I-type: imm[11:0] = instruction[31:20]
+    assign imm_i = {instruction[31] repeat 20, instruction[31:20]};
+
+    // S-type: imm[11:0] = {instruction[31:25], instruction[11:7]}
+    assign imm_s = {instruction[31] repeat 20, instruction[31:25], instruction[11:7]};
+
+    // B-type: imm[12:0] = {instruction[31], instruction[7], instruction[30:25], instruction[11:8], 1'b0}
+    assign imm_b = {instruction[31] repeat 19, instruction[31], instruction[7], instruction[30:25], instruction[11:8], 1'b0};
+
+    // U-type: imm[31:0] = {instruction[31:12], 12'b0}
+    assign imm_u = {instruction[31:12], 12'h0};
+
+    // J-type: imm[20:0] = {instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0}
+    assign imm_j = {instruction[31] repeat 11, instruction[31], instruction[19:12], instruction[20], instruction[30:21], 1'b0};
+
+    // Select immediate based on format
+    assign imm = if imm_sel == IMM_I ? imm_i
+               : if imm_sel == IMM_S ? imm_s
+               : if imm_sel == IMM_B ? imm_b
+               : if imm_sel == IMM_U ? imm_u
+               : if imm_sel == IMM_J ? imm_j
+               : 32'h0;
+}

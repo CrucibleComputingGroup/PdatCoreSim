@@ -1,0 +1,75 @@
+// ALU for RV32E
+// Supports all integer arithmetic and logic operations
+module alu (
+    op: input logic<4>,
+    a: input logic<32>,
+    b: input logic<32>,
+    result: output logic<32>,
+    zero: output logic
+) {
+    // ALU operation codes
+    const OP_ADD: logic<4> = 4'b0000;
+    const OP_SUB: logic<4> = 4'b0001;
+    const OP_SLL: logic<4> = 4'b0010;
+    const OP_SLT: logic<4> = 4'b0011;
+    const OP_SLTU: logic<4> = 4'b0100;
+    const OP_XOR: logic<4> = 4'b0101;
+    const OP_SRL: logic<4> = 4'b0110;
+    const OP_SRA: logic<4> = 4'b0111;
+    const OP_OR: logic<4> = 4'b1000;
+    const OP_AND: logic<4> = 4'b1001;
+
+    var alu_result: logic<32>;
+    var a_signed: signed logic<32>;
+    var b_signed: signed logic<32>;
+
+    assign a_signed = a;
+    assign b_signed = b;
+
+    // ALU operations
+    always_comb {
+        case op {
+            OP_ADD: {
+                alu_result = a + b;
+            }
+            OP_SUB: {
+                alu_result = a - b;
+            }
+            OP_SLL: {
+                // Shift left logical
+                alu_result = a << b[4:0];
+            }
+            OP_SLT: {
+                // Set less than (signed)
+                alu_result = if a_signed <: b_signed ? 32'h1 : 32'h0;
+            }
+            OP_SLTU: {
+                // Set less than unsigned
+                alu_result = if a <: b ? 32'h1 : 32'h0;
+            }
+            OP_XOR: {
+                alu_result = a ^ b;
+            }
+            OP_SRL: {
+                // Shift right logical
+                alu_result = a >> b[4:0];
+            }
+            OP_SRA: {
+                // Shift right arithmetic
+                alu_result = a_signed >>> b[4:0];
+            }
+            OP_OR: {
+                alu_result = a | b;
+            }
+            OP_AND: {
+                alu_result = a & b;
+            }
+            default: {
+                alu_result = 32'h0;
+            }
+        }
+    }
+
+    assign result = alu_result;
+    assign zero = alu_result == 0;
+}

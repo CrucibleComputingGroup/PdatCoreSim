@@ -1,0 +1,51 @@
+// Branch Comparator for RISC-V branch instructions
+// Compares two values based on branch condition
+module branch_comp (
+    a: input logic<32>,
+    b: input logic<32>,
+    funct3: input logic<3>,
+    branch_taken: output logic
+) {
+    // Branch funct3 codes
+    const BEQ: logic<3> = 3'b000;  // Branch if equal
+    const BNE: logic<3> = 3'b001;  // Branch if not equal
+    const BLT: logic<3> = 3'b100;  // Branch if less than (signed)
+    const BGE: logic<3> = 3'b101;  // Branch if greater or equal (signed)
+    const BLTU: logic<3> = 3'b110; // Branch if less than (unsigned)
+    const BGEU: logic<3> = 3'b111; // Branch if greater or equal (unsigned)
+
+    var taken: logic;
+    var a_signed: signed logic<32>;
+    var b_signed: signed logic<32>;
+
+    assign a_signed = a;
+    assign b_signed = b;
+
+    always_comb {
+        case funct3 {
+            BEQ: {
+                taken = a == b;
+            }
+            BNE: {
+                taken = a != b;
+            }
+            BLT: {
+                taken = a_signed <: b_signed;
+            }
+            BGE: {
+                taken = a_signed >= b_signed;
+            }
+            BLTU: {
+                taken = a <: b;
+            }
+            BGEU: {
+                taken = a >= b;
+            }
+            default: {
+                taken = 0;
+            }
+        }
+    }
+
+    assign branch_taken = taken;
+}
