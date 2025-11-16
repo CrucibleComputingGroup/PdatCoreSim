@@ -8,7 +8,7 @@ module RiscvSingleCycle_control #(
     parameter bit ENABLE_SHIFTER  = 1, // Enable barrel shifter (SLL/SRL/SRA)
     parameter bit ENABLE_BRANCHES = 1 // Enable branch comparator
 ) (
-    input var logic          rst_n      , // Active-low reset signal (used for formal assumptions)
+    input var logic          rst        , // Active-low reset signal (used for formal assumptions)
     input var logic [32-1:0] instruction,
 
     // Control signals

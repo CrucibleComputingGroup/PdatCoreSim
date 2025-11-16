@@ -8,8 +8,8 @@ module RiscvSingleCycle_riscv_core #(
     parameter bit ENABLE_SHIFTER  = 1, // Enable barrel shifter (SLL/SRL/SRA)
     parameter bit ENABLE_BRANCHES = 1 // Enable branch comparator
 ) (
-    input var logic clk  ,
-    input var logic rst_n, // Active-low reset (configured via Veryl.toml)
+    input var logic clk,
+    input var logic rst, // Active-low reset (configured via Veryl.toml)
 
     // Instruction memory interface (read-only)
     output var logic [32-1:0] imem_addr ,
@@ -49,7 +49,7 @@ module RiscvSingleCycle_riscv_core #(
         .ENABLE_SHIFTER  (ENABLE_SHIFTER ),
         .ENABLE_BRANCHES (ENABLE_BRANCHES)
     ) control_inst (
-        .rst_n       (rst_n      ),
+        .rst         (rst        ),
         .instruction (instruction),
         .branch      (branch     ),
         .jump        (jump       ),
@@ -75,7 +75,7 @@ module RiscvSingleCycle_riscv_core #(
         .ENABLE_BRANCHES (ENABLE_BRANCHES)
     ) datapath_inst (
         .clk        (clk       ),
-        .rst        (rst_n     ),
+        .rst        (rst       ),
         .imem_addr  (imem_addr ),
         .imem_rdata (imem_rdata),
         .dmem_addr  (dmem_addr ),

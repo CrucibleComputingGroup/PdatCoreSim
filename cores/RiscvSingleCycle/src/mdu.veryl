@@ -2,23 +2,65 @@
 // Combinational implementation (suitable for single-cycle core)
 // Supports conditional generation for RISSP-style additive approach
 module mdu #(
-    param ENABLE_MUL: bit = 1,  // Enable multiply operations
-    param ENABLE_DIV: bit = 1,  // Enable divide operations
+    param ENABLE_MUL: bit = 1, // Enable multiply operations
+    param ENABLE_DIV: bit = 1, // Enable divide operations
 ) (
-    op: input logic<3>,      // MDU operation selection
-    a: input logic<32>,      // Operand A (rs1)
-    b: input logic<32>,      // Operand B (rs2)
+    op    : input  logic<3> , // MDU operation selection
+    a     : input  logic<32>, // Operand A (rs1)
+    b     : input  logic<32>, // Operand B (rs2)
     result: output logic<32> // MDU result
+    ,
 ) {
+
     // MDU operation codes (matches funct3 encoding)
-    const OP_MUL: logic<3> = 3'b000;    // MUL: multiply low 32 bits
-    const OP_MULH: logic<3> = 3'b001;   // MULH: multiply high (signed x signed)
+    const OP_MUL   : logic<3> = 3'b000; // MUL: multiply low 32 bits
+    const OP_MULH  : logic<3> = 3'b001; // MULH: multiply high (signed x signed)
     const OP_MULHSU: logic<3> = 3'b010; // MULHSU: multiply high (signed x unsigned)
-    const OP_MULHU: logic<3> = 3'b011;  // MULHU: multiply high (unsigned x unsigned)
-    const OP_DIV: logic<3> = 3'b100;    // DIV: signed divide
-    const OP_DIVU: logic<3> = 3'b101;   // DIVU: unsigned divide
-    const OP_REM: logic<3> = 3'b110;    // REM: signed remainder
-    const OP_REMU: logic<3> = 3'b111;   // REMU: unsigned remainder
+    const OP_MULHU : logic<3> = 3'b011; // MULHU: multiply high (unsigned x unsigned)
+    const OP_DIV   : logic<3> = 3'b100; // DIV: signed divide
+    const OP_DIVU  : logic<3> = 3'b101; // DIVU: unsigned divide
+    const OP_REM   : logic<3> = 3'b110; // REM: signed remainder
+    const OP_REMU  : logic<3> = 3'b111; // REMU: unsigned remainder
+
+    const MASK_MUL   : logic<8> = 1; // MUL: multiply low 32 bits
+    const MASK_MULH  : logic<8> = 2; // MULH: multiply high (signed x signed)
+    const MASK_MULHSU: logic<8> = 4; // MULHSU: multiply high (signed x unsigned)
+    const MASK_MULHU : logic<8> = 8; // MULHU: multiply high (unsigned x unsigned)
+    const MASK_DIV   : logic<8> = 16; // DIV: signed divide
+    const MASK_DIVU  : logic<8> = 32; // DIVU: unsigned divide
+    const MASK_REM   : logic<8> = 64; // REM: signed remainder
+    const MASK_REMU  : logic<8> = 128; // REMU: unsigned remainder
+
+    var mul_one_hot: logic<8>;
+    always_comb {
+        mul_one_hot = '0;
+        case op {
+            OP_MUL: {
+                mul_one_hot = MASK_MUL;
+            }
+            OP_MULH: {
+                mul_one_hot = MASK_MULH;
+            }
+            OP_MULHSU: {
+                mul_one_hot = MASK_MULHSU;
+            }
+            OP_MULHU: {
+                mul_one_hot = MASK_MULHU;
+            }
+            OP_DIV: {
+                mul_one_hot = MASK_DIV;
+            }
+            OP_DIVU: {
+                mul_one_hot = MASK_DIVU;
+            }
+            OP_REM: {
+                mul_one_hot = MASK_REM;
+            }
+            OP_REMU: {
+                mul_one_hot = MASK_REMU;
+            }
+        }
+    }
 
     var mdu_result: logic<32>;
     var mul_result: logic<32>;
@@ -27,30 +69,36 @@ module mdu #(
     // Conditional generate for multiplier
     if ENABLE_MUL :mul_gen {
         var mul_full: logic<64>;
+        var mula    : logic<64>;
+        var mulb    : logic<64>;
 
         always_comb {
-            mul_result = 32'h0;
-            mul_full = 64'h0;
-
-            case op {
-                OP_MUL, OP_MULH, OP_MULHSU, OP_MULHU: {
+            case mul_one_hot {
+                OP_MUL, OP_MULHU: {
                     // All multiply operations: compute full 64-bit product
-                    mul_full = {32'h0, a} * {32'h0, b};
-
-                    case op {
-                        OP_MUL: {
-                            mul_result = mul_full[31:0];
-                        }
-                        OP_MULHU: {
-                            mul_result = mul_full[63:32];
-                        }
-                        default: {
-                            mul_result = 32'h0;
-                        }
-                    }
+                    mula = {32'h0, a};
+                    mulb = {32'h0, b};
+                }
+                OP_MULHSU: {
+                    mula = {a[31] repeat 32, a};
+                    mulb = {32'h0, b};
+                }
+                OP_MULH: {
+                    mula = {a[31] repeat 32, a};
+                    mulb = {b[31] repeat 32, b};
                 }
                 default: {
-                    mul_result = 32'h0;
+                    mula = {32'h0, a};
+                    mulb = {32'h0, b};
+                }
+            }
+            mul_full = mula * mulb;
+            case mul_one_hot {
+                OP_MUL: {
+                    mul_result = mul_full[31:0];
+                }
+                default: {
+                    mul_result = mul_full[63:32];
                 }
             }
         }
@@ -60,20 +108,20 @@ module mdu #(
 
     // Conditional generate for divider
     if ENABLE_DIV :div_gen {
-        var quotient: logic<32>;
+        var quotient : logic<32>;
         var remainder: logic<32>;
 
         always_comb {
             div_result = 32'h0;
-            quotient = 32'h0;
-            remainder = 32'h0;
+            quotient   = 32'h0;
+            remainder  = 32'h0;
 
             case op {
                 OP_DIV, OP_DIVU: {
                     if b == 0 {
                         div_result = 32'hFFFFFFFF;
                     } else {
-                        quotient = a / b;
+                        quotient   = a / b;
                         div_result = quotient;
                     }
                 }
@@ -81,7 +129,7 @@ module mdu #(
                     if b == 0 {
                         div_result = a;
                     } else {
-                        remainder = a % b;
+                        remainder  = a % b;
                         div_result = remainder;
                     }
                 }
