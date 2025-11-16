@@ -1,0 +1,100 @@
+// Top-level single-cycle RISC-V core (RV32E)
+// Harvard architecture with separate instruction and data memory interfaces
+// Supports conditional generation for RISSP-style additive approach
+module riscv_core #(
+    param ENABLE_MUL: bit = 1,        // Enable multiply operations (M extension)
+    param ENABLE_DIV: bit = 1,        // Enable divide operations (M extension)
+    param ENABLE_ADDER: bit = 1,      // Enable adder (ADD/SUB/SLT/SLTU)
+    param ENABLE_SHIFTER: bit = 1,    // Enable barrel shifter (SLL/SRL/SRA)
+    param ENABLE_BRANCHES: bit = 1,   // Enable branch comparator
+) (
+    clk: input clock,
+    rst_n: input reset,  // Active-low reset (configured via Veryl.toml)
+
+    // Instruction memory interface (read-only)
+    imem_addr: output logic<32>,
+    imem_rdata: input logic<32>,
+
+    // Data memory interface (read/write)
+    dmem_addr: output logic<32>,
+    dmem_wdata: output logic<32>,
+    dmem_rdata: input logic<32>,
+    dmem_we: output logic,
+    dmem_re: output logic
+) {
+    // Control signals
+    var branch: logic;
+    var jump: logic;
+    var mem_read: logic;
+    var mem_write: logic;
+    var mem_to_reg: logic;
+    var alu_src: logic;
+    var alu_a_src: logic<2>;
+    var reg_write: logic;
+    var alu_op: logic<4>;
+    var imm_sel: logic<3>;
+    var funct3: logic<3>;
+    var pc_src: logic<2>;
+    var mdu_en: logic;  // MDU enable signal (bugfix - was missing)
+
+    // Instruction from memory
+    var instruction: logic<32>;
+    assign instruction = imem_rdata;
+
+    // Control unit instantiation with parameters
+    inst control_inst: control #(
+        ENABLE_MUL: ENABLE_MUL,
+        ENABLE_DIV: ENABLE_DIV,
+        ENABLE_ADDER: ENABLE_ADDER,
+        ENABLE_SHIFTER: ENABLE_SHIFTER,
+        ENABLE_BRANCHES: ENABLE_BRANCHES
+    ) (
+        rst_n: rst_n,
+        instruction: instruction,
+        branch: branch,
+        jump: jump,
+        mem_read: mem_read,
+        mem_write: mem_write,
+        mem_to_reg: mem_to_reg,
+        alu_src: alu_src,
+        alu_a_src: alu_a_src,
+        reg_write: reg_write,
+        alu_op: alu_op,
+        imm_sel: imm_sel,
+        mdu_en: mdu_en,  // Bugfix: now connected
+        funct3: funct3,
+        pc_src: pc_src
+    );
+
+    // Datapath instantiation with parameters
+    inst datapath_inst: datapath #(
+        ENABLE_MUL: ENABLE_MUL,
+        ENABLE_DIV: ENABLE_DIV,
+        ENABLE_ADDER: ENABLE_ADDER,
+        ENABLE_SHIFTER: ENABLE_SHIFTER,
+        ENABLE_BRANCHES: ENABLE_BRANCHES
+    ) (
+        clk: clk,
+        rst: rst_n,
+        imem_addr: imem_addr,
+        imem_rdata: imem_rdata,
+        dmem_addr: dmem_addr,
+        dmem_wdata: dmem_wdata,
+        dmem_rdata: dmem_rdata,
+        branch: branch,
+        jump: jump,
+        mem_to_reg: mem_to_reg,
+        alu_src: alu_src,
+        alu_a_src: alu_a_src,
+        reg_write: reg_write,
+        alu_op: alu_op,
+        imm_sel: imm_sel,
+        funct3: funct3,
+        pc_src: pc_src,
+        mdu_en: mdu_en  // Bugfix: now connected
+    );
+
+    // Memory control signals
+    assign dmem_we = mem_write;
+    assign dmem_re = mem_read;
+}

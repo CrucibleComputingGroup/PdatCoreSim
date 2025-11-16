@@ -1,0 +1,117 @@
+// ALU for RV32E
+// Supports all integer arithmetic and logic operations
+// Supports conditional generation for RISSP-style additive approach
+module alu #(
+    param ENABLE_ADDER  : bit = 1, // Enable adder (ADD/SUB/SLT/SLTU)
+    param ENABLE_SHIFTER: bit = 1, // Enable barrel shifter (SLL/SRL/SRA)
+) (
+    op    : input  logic<4> ,
+    a     : input  logic<32>,
+    b     : input  logic<32>,
+    result: output logic<32>,
+    zero  : output logic    ,
+) {
+    // ALU operation codes
+    const OP_ADD : logic<4> = 4'b0000;
+    const OP_SUB : logic<4> = 4'b0001;
+    const OP_SLL : logic<4> = 4'b0010;
+    const OP_SLT : logic<4> = 4'b0011;
+    const OP_SLTU: logic<4> = 4'b0100;
+    const OP_XOR : logic<4> = 4'b0101;
+    const OP_SRL : logic<4> = 4'b0110;
+    const OP_SRA : logic<4> = 4'b0111;
+    const OP_OR  : logic<4> = 4'b1000;
+    const OP_AND : logic<4> = 4'b1001;
+
+    var alu_result    : logic       <32>;
+    var adder_result  : logic       <32>;
+    var shifter_result: logic       <32>;
+    var a_signed      : signed logic<32>;
+    var b_signed      : signed logic<32>;
+
+    assign a_signed = a;
+    assign b_signed = b;
+
+    // Conditional generate for adder
+    if ENABLE_ADDER :adder_gen {
+        var sub_result: signed logic<33>;  // 33-bit for overflow detection
+
+        always_comb {
+            adder_result = 32'h0;
+            sub_result = 33'h0;
+
+            case op {
+                OP_ADD: {
+                    adder_result = a + b;
+                }
+                OP_SUB: {
+                    adder_result = a - b;
+                }
+                OP_SLT: {
+                    // Set if less than (signed) - use subtraction
+                    sub_result = {a_signed[31], a_signed} - {b_signed[31], b_signed};
+                    adder_result = if sub_result[32] ? 32'h1 : 32'h0;
+                }
+                OP_SLTU: {
+                    // Set if less than (unsigned) - use subtraction
+                    adder_result = if (a <: b) ? 32'h1 : 32'h0;
+                }
+                default: {
+                    adder_result = 32'h0;
+                }
+            }
+        }
+    } else {
+        assign adder_result = 32'h0;
+    }
+
+    // Conditional generate for shifter
+    if ENABLE_SHIFTER :shifter_gen {
+        always_comb {
+            shifter_result = 32'h0;
+            case op {
+                OP_SLL : {
+                    shifter_result = a << b[4:0];
+                }
+                OP_SRL : {
+                    shifter_result = a >> b[4:0];
+                }
+                OP_SRA : {
+                    shifter_result = a_signed >>> b[4:0];
+                }
+                default: {
+                    shifter_result = 32'h0;
+                }
+            }
+        }
+    } else {
+        assign shifter_result = 32'h0;
+    }
+
+    // Combine results
+    always_comb {
+        case op {
+            OP_ADD, OP_SUB, OP_SLT, OP_SLTU: {
+                alu_result = adder_result;
+            }
+            OP_SLL, OP_SRL, OP_SRA         : {
+                alu_result = shifter_result;
+            }
+            OP_XOR                         : {
+                alu_result = a ^ b;
+            }
+            OP_OR                          : {
+                alu_result = a | b;
+            }
+            OP_AND                         : {
+                alu_result = a & b;
+            }
+            default                        : {
+                alu_result = 32'h0;
+            }
+        }
+    }
+
+    assign result = alu_result;
+    assign zero   = alu_result == 0;
+}

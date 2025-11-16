@@ -1,0 +1,113 @@
+// Multiply/Divide Unit for RV32M extension
+// Combinational implementation (suitable for single-cycle core)
+// Supports conditional generation for RISSP-style additive approach
+module mdu #(
+    param ENABLE_MUL: bit = 1,  // Enable multiply operations
+    param ENABLE_DIV: bit = 1,  // Enable divide operations
+) (
+    op: input logic<3>,      // MDU operation selection
+    a: input logic<32>,      // Operand A (rs1)
+    b: input logic<32>,      // Operand B (rs2)
+    result: output logic<32> // MDU result
+) {
+    // MDU operation codes (matches funct3 encoding)
+    const OP_MUL: logic<3> = 3'b000;    // MUL: multiply low 32 bits
+    const OP_MULH: logic<3> = 3'b001;   // MULH: multiply high (signed x signed)
+    const OP_MULHSU: logic<3> = 3'b010; // MULHSU: multiply high (signed x unsigned)
+    const OP_MULHU: logic<3> = 3'b011;  // MULHU: multiply high (unsigned x unsigned)
+    const OP_DIV: logic<3> = 3'b100;    // DIV: signed divide
+    const OP_DIVU: logic<3> = 3'b101;   // DIVU: unsigned divide
+    const OP_REM: logic<3> = 3'b110;    // REM: signed remainder
+    const OP_REMU: logic<3> = 3'b111;   // REMU: unsigned remainder
+
+    var mdu_result: logic<32>;
+    var mul_result: logic<32>;
+    var div_result: logic<32>;
+
+    // Conditional generate for multiplier
+    if ENABLE_MUL :mul_gen {
+        var mul_full: logic<64>;
+
+        always_comb {
+            mul_result = 32'h0;
+            mul_full = 64'h0;
+
+            case op {
+                OP_MUL, OP_MULH, OP_MULHSU, OP_MULHU: {
+                    // All multiply operations: compute full 64-bit product
+                    mul_full = {32'h0, a} * {32'h0, b};
+
+                    case op {
+                        OP_MUL: {
+                            mul_result = mul_full[31:0];
+                        }
+                        OP_MULHU: {
+                            mul_result = mul_full[63:32];
+                        }
+                        default: {
+                            mul_result = 32'h0;
+                        }
+                    }
+                }
+                default: {
+                    mul_result = 32'h0;
+                }
+            }
+        }
+    } else {
+        assign mul_result = 32'h0;
+    }
+
+    // Conditional generate for divider
+    if ENABLE_DIV :div_gen {
+        var quotient: logic<32>;
+        var remainder: logic<32>;
+
+        always_comb {
+            div_result = 32'h0;
+            quotient = 32'h0;
+            remainder = 32'h0;
+
+            case op {
+                OP_DIV, OP_DIVU: {
+                    if b == 0 {
+                        div_result = 32'hFFFFFFFF;
+                    } else {
+                        quotient = a / b;
+                        div_result = quotient;
+                    }
+                }
+                OP_REM, OP_REMU: {
+                    if b == 0 {
+                        div_result = a;
+                    } else {
+                        remainder = a % b;
+                        div_result = remainder;
+                    }
+                }
+                default: {
+                    div_result = 32'h0;
+                }
+            }
+        }
+    } else {
+        assign div_result = 32'h0;
+    }
+
+    // Select result based on operation
+    always_comb {
+        case op {
+            OP_MUL, OP_MULH, OP_MULHSU, OP_MULHU: {
+                mdu_result = mul_result;
+            }
+            OP_DIV, OP_DIVU, OP_REM, OP_REMU: {
+                mdu_result = div_result;
+            }
+            default: {
+                mdu_result = 32'h0;
+            }
+        }
+    }
+
+    assign result = mdu_result;
+}

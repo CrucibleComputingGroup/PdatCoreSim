@@ -1,0 +1,8 @@
+[project]
+name = "RiscvSingleCycle"
+version = "0.1.0"
+[build]
+source = "src"
+target = {type = "directory", path = "target"}
+sourcemap_target = {type = "none"}  # Disable source maps to avoid Synlig conflicts
+reset_type = "async_low"  # Use active-low reset to match DSL codegen assumptions
