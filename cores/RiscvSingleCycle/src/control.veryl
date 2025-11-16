@@ -8,7 +8,7 @@ module control #(
     param ENABLE_SHIFTER : bit = 1, // Enable barrel shifter (SLL/SRL/SRA)
     param ENABLE_BRANCHES: bit = 1, // Enable branch comparator
 ) (
-    rst_n      : input reset    , // Active-low reset signal (used for formal assumptions)
+    rst      : input reset    , // Active-low reset signal (used for formal assumptions)
     instruction: input logic<32>,
 
     // Control signals

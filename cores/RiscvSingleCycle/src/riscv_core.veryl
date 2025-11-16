@@ -9,7 +9,7 @@ module riscv_core #(
     param ENABLE_BRANCHES: bit = 1,   // Enable branch comparator
 ) (
     clk: input clock,
-    rst_n: input reset,  // Active-low reset (configured via Veryl.toml)
+    rst: input reset,  // Active-low reset (configured via Veryl.toml)
 
     // Instruction memory interface (read-only)
     imem_addr: output logic<32>,
@@ -49,7 +49,7 @@ module riscv_core #(
         ENABLE_SHIFTER: ENABLE_SHIFTER,
         ENABLE_BRANCHES: ENABLE_BRANCHES
     ) (
-        rst_n: rst_n,
+        rst: rst,
         instruction: instruction,
         branch: branch,
         jump: jump,
@@ -75,7 +75,7 @@ module riscv_core #(
         ENABLE_BRANCHES: ENABLE_BRANCHES
     ) (
         clk: clk,
-        rst: rst_n,
+        rst: rst,
         imem_addr: imem_addr,
         imem_rdata: imem_rdata,
         dmem_addr: dmem_addr,
